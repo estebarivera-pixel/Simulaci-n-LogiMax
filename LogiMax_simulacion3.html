@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LogiMax | Simulación de red logística</title>
+<style>
+:root{
+  --bg:#07111f; --panel:#0d1b2d; --panel2:#10243b; --line:#213a56;
+  --white:#edf5ff; --muted:#94abc4; --teal:#4de0c1; --blue:#64a8ff;
+  --orange:#ffbd66; --green:#70e6a2; --purple:#bd9aff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--white);font-family:Inter,Segoe UI,Arial,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+#stage{position:relative;width:min(100vw,177.7778vh);height:min(100vh,56.25vw);aspect-ratio:16/9;background:
+ radial-gradient(ellipse at 18% 5%,rgba(49,104,159,.18),transparent 34%),
+ radial-gradient(ellipse at 84% 95%,rgba(35,163,143,.12),transparent 35%),var(--bg);overflow:hidden}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(89,127,163,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(89,127,163,.055) 1px,transparent 1px);background-size:32px 32px;pointer-events:none}
+header{height:14%;padding:2.2% 3.2% 1%;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+.brand{display:flex;gap:15px;align-items:center}
+.logo{width:43px;height:43px;border:1px solid rgba(77,224,193,.55);border-radius:13px;display:grid;place-items:center;background:rgba(77,224,193,.10);color:var(--teal);font-size:22px;font-weight:800;box-shadow:0 0 28px rgba(77,224,193,.08)}
+h1{font-size:clamp(19px,2.5vw,34px);letter-spacing:.12em;margin:0;font-weight:800}
+.subtitle{font-size:clamp(8px,.9vw,12px);letter-spacing:.16em;color:var(--muted);margin-top:6px}
+.live{border:1px solid #245b59;border-radius:99px;padding:9px 15px;color:var(--teal);font-size:clamp(8px,.9vw,12px);letter-spacing:.1em;background:rgba(20,80,76,.2);display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;background:var(--teal);border-radius:50%;box-shadow:0 0 12px var(--teal);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+#content{position:absolute;left:2.5%;right:2.5%;top:14%;bottom:11%;display:grid;grid-template-columns:minmax(0,1fr) 24%;gap:1.4%;z-index:1}
+#networkPanel,.sidePanel{border:1px solid rgba(85,126,166,.27);border-radius:18px;background:linear-gradient(145deg,rgba(16,36,59,.94),rgba(8,21,37,.96));box-shadow:0 14px 35px rgba(0,0,0,.16);min-width:0;min-height:0}
+#networkPanel{position:relative;overflow:hidden}
+.panelTop{position:absolute;left:3%;right:3%;top:3%;display:flex;justify-content:space-between;align-items:center;z-index:3}
+.kicker{font-size:clamp(8px,.85vw,11px);letter-spacing:.14em;color:var(--muted);font-weight:700}
+#sceneTitle{font-size:clamp(12px,1.35vw,18px);font-weight:700;margin-top:5px}
+.networkLegend{display:flex;gap:12px;font-size:clamp(7px,.72vw,10px);color:var(--muted)}
+.legendItem{display:flex;align-items:center;gap:5px}.legendDot{width:7px;height:7px;border-radius:50%}
+svg{width:100%;height:100%;display:block}
+.route{fill:none;stroke-width:1.5;opacity:.13;transition:opacity .5s,stroke-width .5s;stroke-linecap:round}
+.route.active{opacity:.94;stroke-width:3;filter:drop-shadow(0 0 5px currentColor)}
+.route.done{opacity:.55;stroke-width:2}
+.packet{filter:drop-shadow(0 0 5px currentColor)}
+.node{cursor:default}
+.node circle{stroke-width:1.5;filter:drop-shadow(0 0 9px rgba(0,0,0,.25))}
+.node .key{font-size:15px;font-weight:800;text-anchor:middle;dominant-baseline:central;fill:#f4f8ff}
+.node .name{font-size:10px;font-weight:700;letter-spacing:.06em;text-anchor:middle;fill:#e5f0ff}
+.node .amount{font-size:9px;text-anchor:middle;fill:#9fb5cd}
+.sidePanel{padding:7%;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.sideHead{font-size:clamp(8px,.82vw,11px);letter-spacing:.15em;color:var(--muted);font-weight:800}
+#phaseLabel{font-size:clamp(14px,1.55vw,21px);font-weight:800;line-height:1.18}
+#phaseText{font-size:clamp(9px,.92vw,12px);color:#b4c6da;line-height:1.45;min-height:45px}
+.routeCard{border:1px solid rgba(100,168,255,.3);border-radius:13px;background:rgba(100,168,255,.07);padding:12px;margin-top:2px}
+.routeCard .small{font-size:clamp(8px,.72vw,10px);color:var(--muted);letter-spacing:.09em}
+#routeName{font-size:clamp(19px,2.1vw,28px);font-weight:800;margin:5px 0 8px}
+.dataRow{display:flex;justify-content:space-between;gap:5px;font-size:clamp(9px,.9vw,12px);margin-top:7px}
+.dataRow span:first-child{color:var(--muted)}
+.dataRow strong{font-variant-numeric:tabular-nums}
+.meter{height:5px;border-radius:9px;background:#21344b;overflow:hidden;margin-top:10px}
+#meterFill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--teal));border-radius:9px;transition:width .35s}
+.stat{border-top:1px solid rgba(108,140,174,.19);padding-top:10px;margin-top:auto}
+.statLabel{font-size:clamp(7px,.72vw,10px);color:var(--muted);letter-spacing:.1em}
+.statValue{font-size:clamp(17px,2vw,27px);font-weight:800;margin-top:5px}
+.statSub{font-size:clamp(8px,.75vw,10px);color:var(--teal);margin-top:4px}
+#summaryOverlay{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(4,12,24,.88);backdrop-filter:blur(8px);padding:5%}
+#summaryOverlay.show{display:flex}
+.summaryBox{width:92%;max-width:880px;text-align:center}
+.summaryEyebrow{color:var(--teal);letter-spacing:.24em;font-size:clamp(9px,1vw,13px);font-weight:800}
+.summaryBox h2{font-size:clamp(27px,4vw,52px);margin:12px 0 6px;letter-spacing:.02em}
+.summaryBox p{color:var(--muted);font-size:clamp(11px,1.2vw,16px);margin:0 0 28px}
+.summaryGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.summaryMetric{border:1px solid rgba(77,224,193,.25);border-radius:15px;padding:20px 8px;background:linear-gradient(145deg,rgba(18,49,65,.9),rgba(11,25,43,.9))}
+.summaryMetric strong{display:block;font-size:clamp(19px,2.7vw,35px);color:var(--white);margin-bottom:8px}
+.summaryMetric span{font-size:clamp(8px,.8vw,11px);letter-spacing:.06em;color:var(--muted)}
+.summaryNote{margin-top:24px!important;color:#d4e2f1!important}
+footer{position:absolute;bottom:2%;left:3%;right:3%;height:6%;display:flex;align-items:center;gap:12px;z-index:10}
+#playBtn,#restartBtn,#fullscreenBtn{border:1px solid #294662;border-radius:9px;background:#10243b;color:var(--white);padding:9px 14px;font-size:clamp(9px,.9vw,12px);font-weight:700;cursor:pointer}
+#playBtn:hover,#restartBtn:hover,#fullscreenBtn:hover{border-color:var(--teal)}
+#timeline{height:4px;flex:1;background:#1b3048;border-radius:9px;overflow:hidden}
+#timelineFill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--teal))}
+#timeLabel{font-size:clamp(8px,.8vw,11px);color:var(--muted);font-variant-numeric:tabular-nums;min-width:60px;text-align:right}
+#hint{font-size:clamp(7px,.7vw,9px);color:#66809b;white-space:nowrap}
+@media(max-aspect-ratio:5/4){#content{grid-template-columns:minmax(0,1fr) 27%}.sidePanel{padding:5%;gap:8px}.networkLegend{display:none}.summaryGrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="grid"></div>
+  <header>
+    <div class="brand">
+      <div class="logo">L</div>
+      <div><h1>LOGIMAX</h1><div class="subtitle">SIMULACIÓN DE RED LOGÍSTICA · COSTA RICA</div></div>
+    </div>
+    <div class="live"><span class="dot"></span> SISTEMA DE DISTRIBUCIÓN</div>
+  </header>
+  <main id="content">
+    <section id="networkPanel">
+      <div class="panelTop">
+        <div><div class="kicker">RED DE TRANSPORTE</div><div id="sceneTitle">Conectando almacenes y destinos</div></div>
+        <div class="networkLegend">
+          <span class="legendItem"><i class="legendDot" style="background:var(--blue)"></i>San José</span>
+          <span class="legendItem"><i class="legendDot" style="background:var(--orange)"></i>Alajuela</span>
+          <span class="legendItem"><i class="legendDot" style="background:var(--teal)"></i>Cartago</span>
+        </div>
+      </div>
+      <svg id="network" viewBox="0 0 900 580" preserveAspectRatio="xMidYMid meet" aria-label="Red de almacenes y destinos LogiMax">
+        <defs>
+          <linearGradient id="routeGradient" x1="0" x2="1"><stop offset="0%" stop-color="#64a8ff"/><stop offset="100%" stop-color="#4de0c1"/></linearGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="3.2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g id="routeLayer"></g><g id="packetLayer"></g><g id="nodeLayer"></g>
+      </svg>
+      <div id="summaryOverlay">
+        <div class="summaryBox">
+          <div class="summaryEyebrow">RESULTADO DE LA DISTRIBUCIÓN</div>
+          <h2>LogiMax · Red abastecida</h2>
+          <p>Resumen del escenario de transporte presentado</p>
+          <div class="summaryGrid">
+            <div class="summaryMetric"><strong>$73.530</strong><span>COSTO TOTAL</span></div>
+            <div class="summaryMetric"><strong>2.850</strong><span>UNIDADES DISTRIBUIDAS</span></div>
+            <div class="summaryMetric"><strong>15 / 15</strong><span>RUTAS ACTIVAS</span></div>
+            <div class="summaryMetric"><strong>100%</strong><span>CAPACIDADES UTILIZADAS*</span></div>
+          </div>
+          <p class="summaryNote">Todos los destinos reciben la cantidad requerida en el escenario presentado.</p>
+        </div>
+      </div>
+    </section>
+    <aside class="sidePanel">
+      <div class="sideHead">ESTADO DE LA SIMULACIÓN</div>
+      <div id="phaseLabel">Red logística</div>
+      <div id="phaseText">Tres almacenes abastecen cinco destinos en distintas regiones de Costa Rica.</div>
+      <div class="routeCard">
+        <div class="small">RUTA EN MOVIMIENTO</div>
+        <div id="routeName">A → D</div>
+        <div class="dataRow"><span>Origen</span><strong id="originName">San José</strong></div>
+        <div class="dataRow"><span>Destino</span><strong id="destName">Heredia</strong></div>
+        <div class="dataRow"><span>Unidades</span><strong id="units">160</strong></div>
+        <div class="dataRow"><span>Costo por unidad</span><strong id="unitCost">$18</strong></div>
+        <div class="dataRow"><span>Uso de capacidad</span><strong id="capacity">100%</strong></div>
+        <div class="meter"><div id="meterFill"></div></div>
+      </div>
+      <div class="stat">
+        <div class="statLabel">COSTO ACUMULADO DEL ESCENARIO</div>
+        <div class="statValue" id="costCounter">$0</div>
+        <div class="statSub" id="routeCounter">0 de 15 rutas mostradas</div>
+      </div>
+    </aside>
+  </main>
+  <footer>
+    <button id="playBtn" type="button">❚❚ Pausar</button>
+    <button id="restartBtn" type="button">↺ Reiniciar</button>
+    <div id="timeline"><div id="timelineFill"></div></div>
+    <div id="timeLabel">00:00 / 01:00</div>
+    <div id="hint"><button id="fullscreenBtn" type="button">⛶ Pantalla completa</button></div>
+  </footer>
+</div>
+<script>
+(() => {
+const warehouses=[
+ {key:"A",name:"San José",units:1000,x:115,y:155,color:"#64a8ff"},
+ {key:"B",name:"Alajuela",units:940,x:115,y:300,color:"#ffbd66"},
+ {key:"C",name:"Cartago",units:910,x:115,y:445,color:"#4de0c1"}
+];
+const destinations=[
+ {key:"D",name:"Heredia",units:450,x:785,y:105},
+ {key:"E",name:"Puntarenas",units:630,x:785,y:205},
+ {key:"F",name:"Limón",units:690,x:785,y:305},
+ {key:"G",name:"Guanacaste",units:570,x:785,y:405},
+ {key:"H",name:"Pérez Zeledón",units:510,x:785,y:505}
+];
+const routes=[
+ {a:0,d:0,q:160,c:18},{a:0,d:1,q:220,c:28},{a:0,d:2,q:240,c:30},{a:0,d:3,q:200,c:35},{a:0,d:4,q:180,c:25},
+ {a:1,d:0,q:140,c:10},{a:1,d:1,q:210,c:20},{a:1,d:2,q:230,c:32},{a:1,d:3,q:190,c:30},{a:1,d:4,q:170,c:28},
+ {a:2,d:0,q:150,c:15},{a:2,d:1,q:200,c:25},{a:2,d:2,q:220,c:20},{a:2,d:3,q:180,c:40},{a:2,d:4,q:160,c:22}
+];
+const NS="http://www.w3.org/2000/svg";
+const routeLayer=document.getElementById("routeLayer"), packetLayer=document.getElementById("packetLayer"), nodeLayer=document.getElementById("nodeLayer");
+const routeEls=[], packetEls=[];
+function el(tag,attrs={},parent){const n=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));if(parent)parent.appendChild(n);return n}
+function text(parent,x,y,content,attrs={}){const n=el("text",{x,y,...attrs},parent);n.textContent=content;return n}
+function curve(a,d){
+ const p0={x:warehouses[a].x+40,y:warehouses[a].y},p3={x:destinations[d].x-40,y:destinations[d].y};
+ const dy=p3.y-p0.y;
+ const p1={x:p0.x+210,y:p0.y+dy*.08},p2={x:p3.x-210,y:p3.y-dy*.08};
+ return `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`;
+}
+routes.forEach((r,i)=>{
+ const path=el("path",{d:curve(r.a,r.d),class:"route",stroke:warehouses[r.a].color,"data-route":i},routeLayer);
+ routeEls.push(path);
+ const packet=el("circle",{r:4.3,fill:warehouses[r.a].color,class:"packet",opacity:0},packetLayer);
+ packetEls.push(packet);
+});
+function makeNode(node,isWarehouse){
+ const g=el("g",{class:"node"},nodeLayer);
+ const fill=isWarehouse?node.color:"#173650";
+ const stroke=isWarehouse?node.color:"#4de0c1";
+ el("circle",{cx:node.x,cy:node.y,r:isWarehouse?25:22,fill:isWarehouse?node.color+"22":"#103b3b",stroke},g);
+ if(!isWarehouse) el("circle",{cx:node.x,cy:node.y,r:16,fill:"none",stroke:"#4de0c1","stroke-opacity":".25"},g);
+ text(g,node.x,node.y+1,node.key,{class:"key"});
+ text(g,node.x,node.y+(isWarehouse?43:39),node.name.toUpperCase(),{class:"name"});
+ text(g,node.x,node.y+(isWarehouse?58:53),isWarehouse?node.units.toLocaleString("es-CR")+" disponibles":node.units.toLocaleString("es-CR")+" requeridas",{class:"amount"});
+}
+warehouses.forEach(w=>makeNode(w,true));destinations.forEach(d=>makeNode(d,false));
+
+const phaseLabel=document.getElementById("phaseLabel"), phaseText=document.getElementById("phaseText");
+const routeName=document.getElementById("routeName"), originName=document.getElementById("originName"), destName=document.getElementById("destName");
+const units=document.getElementById("units"), unitCost=document.getElementById("unitCost"), capacity=document.getElementById("capacity"), meterFill=document.getElementById("meterFill");
+const costCounter=document.getElementById("costCounter"), routeCounter=document.getElementById("routeCounter"), sceneTitle=document.getElementById("sceneTitle");
+const summaryOverlay=document.getElementById("summaryOverlay"), timelineFill=document.getElementById("timelineFill"), timeLabel=document.getElementById("timeLabel"), playBtn=document.getElementById("playBtn");
+const TOTAL=60; let elapsed=0, playing=true, last=performance.now(), finished=false;
+function money(n){return "$"+Math.round(n).toLocaleString("en-US")}
+function updateUI(t){
+ const activeIndex=t<8?-1:t<38?Math.min(14,Math.floor((t-8)/2)):14;
+ let scene;
+ if(t<8){
+  scene=0;sceneTitle.textContent="Conectando almacenes y destinos";
+  phaseLabel.textContent="Red logística";
+  phaseText.textContent="Tres almacenes abastecen cinco destinos en distintas regiones de Costa Rica.";
+ }else if(t<38){
+  scene=1;sceneTitle.textContent="Flujo de productos por las 15 rutas";
+  phaseLabel.textContent="Distribución en curso";
+  phaseText.textContent="Cada conexión representa unidades enviadas desde un almacén hasta un destino.";
+ }else if(t<48){
+  scene=2;sceneTitle.textContent="Red completa · rutas activas";
+  phaseLabel.textContent="Demanda abastecida";
+  phaseText.textContent="Las cantidades asignadas a los destinos suman 2.850 unidades.";
+ }else{
+  scene=3;sceneTitle.textContent="Resumen del escenario";
+  phaseLabel.textContent="Resultado final";
+  phaseText.textContent="La red completa se presenta con los costos y las cantidades del escenario.";
+ }
+ routeEls.forEach((p,i)=>{
+  p.classList.remove("active","done");
+  if(t<8){
+   const prog=Math.max(0,Math.min(1,(t-1-i*.25)/3.2));
+   p.style.opacity=prog*.55;
+   p.style.strokeWidth="1.5";
+  }else if(t<38){
+   const idx=Math.min(14,Math.floor((t-8)/2));
+   if(i<idx){p.classList.add("done");p.style.opacity=".38"}
+   else if(i===idx){p.classList.add("active");p.style.opacity=".98"}
+   else {p.style.opacity=".12"}
+  }else{
+   p.style.opacity=".74";p.style.strokeWidth=(t>=48?"2.5":"2");
+   if(t>=38 && i===Math.min(14,Math.floor((t-38)*1.5))) p.classList.add("active");
+  }
+ });
+ packetEls.forEach((p,i)=>{
+  if(t>=8 && t<48){
+   const start=8+i*2, local=(t-start)/2;
+   if(local>=0 && local<=1){
+    p.setAttribute("opacity",Math.sin(local*Math.PI)*1);
+    const path=routeEls[i], len=path.getTotalLength(), pt=path.getPointAtLength(Math.max(0,Math.min(1,local))*len);
+    p.setAttribute("cx",pt.x);p.setAttribute("cy",pt.y);
+   }else p.setAttribute("opacity",0);
+  }else if(t>=48){
+   const local=((t-48)/4+i*.11)%1;
+   const path=routeEls[i],pt=path.getPointAtLength(local*path.getTotalLength());
+   p.setAttribute("cx",pt.x);p.setAttribute("cy",pt.y);p.setAttribute("opacity",.85);
+  }else p.setAttribute("opacity",0);
+ });
+ if(t>=8 && t<38){
+  const idx=Math.min(14,Math.floor((t-8)/2)),r=routes[idx],w=warehouses[r.a],d=destinations[r.d];
+  routeName.textContent=w.key+" → "+d.key;originName.textContent=w.name;destName.textContent=d.name;
+  units.textContent=r.q+" unidades";unitCost.textContent=money(r.c);capacity.textContent="100%";
+  meterFill.style.width="100%";
+  const partial=routes.slice(0,idx).reduce((sum,x)=>sum+x.q*x.c,0);
+  costCounter.textContent=money(partial);
+  routeCounter.textContent=idx+" de 15 rutas completadas";
+ }else if(t>=38){
+  routeName.textContent="A → H";originName.textContent="San José";destName.textContent="Pérez Zeledón";
+  units.textContent="180 unidades";unitCost.textContent="$25";capacity.textContent="100%";meterFill.style.width="100%";
+  costCounter.textContent="$73,530";routeCounter.textContent="15 de 15 rutas activas";
+ }else{
+  routeName.textContent="A → D";originName.textContent="San José";destName.textContent="Heredia";units.textContent="160 unidades";unitCost.textContent="$18";capacity.textContent="100%";meterFill.style.width=(Math.max(0,t/8)*100)+"%";
+  costCounter.textContent="$0";routeCounter.textContent="Preparando 15 rutas";
+ }
+ summaryOverlay.classList.toggle("show",t>=48);
+ timelineFill.style.width=(t/TOTAL*100)+"%";
+ const s=Math.floor(t);timeLabel.textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")+" / 01:00";
+}
+function tick(now){
+ if(playing){
+  elapsed+=(now-last)/1000;
+  if(elapsed>=TOTAL){elapsed=TOTAL;playing=false;playBtn.textContent="▶ Reproducir";finished=true}
+ }
+ last=now;updateUI(elapsed);requestAnimationFrame(tick);
+}
+playBtn.addEventListener("click",()=>{
+ if(playing){playing=false;playBtn.textContent="▶ Reproducir"}
+ else {if(elapsed>=TOTAL)elapsed=0;playing=true;finished=false;last=performance.now();playBtn.textContent="❚❚ Pausar"}
+});
+document.getElementById("restartBtn").addEventListener("click",()=>{
+    elapsed=0;
+    playing=false;
+    finished=false;
+    last=performance.now();
+    playBtn.textContent="▶ Reproducir";
+    updateUI(0);
+});
+document.addEventListener("keydown",e=>{
+ if(e.code==="Space"){e.preventDefault();playBtn.click()}
+ if(e.key.toLowerCase()==="r")document.getElementById("restartBtn").click();
+});
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+updateUI(0);requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
